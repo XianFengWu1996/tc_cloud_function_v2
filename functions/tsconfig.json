@@ -1,17 +1,19 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "outDir": "lib",
     "sourceMap": true,
     "strict": true,
-    "target": "es2017",
+    "target": "ES6",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
   },
   "compileOnSave": true,
   "include": [
-    "src"
-  ]
+    "**/*.ts", "**/*.tsx"
+  ],
+  "exclude": [ "node_modules", "build" ],
 }

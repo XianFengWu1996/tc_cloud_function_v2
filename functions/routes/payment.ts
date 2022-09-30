@@ -3,7 +3,7 @@ import express from 'express';
 // import {  checkTokenInCookie } from '../middleware/auth';
 // import { filesUpload } from '../middleware/upload'
 // import { body } from 'express-validator';
-import * as paymentController from '../controller/payment';
+import * as paymentController from '../controller/payment.js';
 
 const payment = express.Router();
 

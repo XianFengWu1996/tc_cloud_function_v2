@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
-import { firestore } from 'firebase-admin';
-import { generateCategoryFromDoc } from '../helper/menu';
+import admin from 'firebase-admin';
+import { generateCategoryFromDoc } from '../helper/menu.js';
+
+const { firestore } = admin;
 
 export const getAllMenu = async (req: Request, res: Response) => {
   try {
