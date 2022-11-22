@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import admin from 'firebase-admin';
 import lodash from 'lodash';
+
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import { generateResetPasswordEmail } from '../email/resetPasswordEmail.js';
@@ -104,7 +105,6 @@ export const verifyResetPasswordToken = async (req: Request, res: Response) => {
 
     res.status(200).json();
   } catch (error) {
-    console.log(error);
     res
       .status(500)
       .json({ error: (error as Error).message ?? 'Failed to verify token' });
@@ -113,7 +113,6 @@ export const verifyResetPasswordToken = async (req: Request, res: Response) => {
 
 export const confirmResetPassword = async (req: Request, res: Response) => {
   try {
-    console.log(req.body);
     const { token, password, confirmPassword } = req.body;
 
     // check if the new and confirm password is empty

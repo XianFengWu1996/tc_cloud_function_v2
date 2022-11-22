@@ -20,6 +20,8 @@ declare global {
       STRIPE_VERSION: string;
       TAIPEI_FRONTEND_URL: string;
       RESET_PASS_SECRET: string;
+      SMS_TOKEN_SECRET: string;
+      PUB_TOKEN_SECRET: string;
     }
   }
 }

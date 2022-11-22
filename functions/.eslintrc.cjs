@@ -24,6 +24,7 @@ module.exports = {
   plugins: [
     '@typescript-eslint',
     'import',
+    'unused-imports',
   ],
   rules: {
     'indent': 'off',
