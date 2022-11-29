@@ -17,7 +17,11 @@ export const verifyFirebaseToken = async (
       throw new Error('Not Authorized');
     }
 
-    const user = await auth().verifyIdToken(authorization);
+    const user = await auth()
+      .verifyIdToken(authorization)
+      .catch(() => {
+        throw new Error('Failed to authorize');
+      });
 
     if (!user) {
       throw new Error('Not authorized');
@@ -39,14 +43,20 @@ export const verifyPublicToken = async (
   next: NextFunction,
 ) => {
   try {
-    if (req.headers.authorization) {
-      // remove the bearer from the token
-      const authorization = req.headers.authorization.replace('Bearer ', '');
-
-      // verify the jwt
-      jwt.verify(authorization, process.env.PUB_TOKEN_SECRET);
-      next();
+    if (!req.headers.authorization) {
+      throw new Error('Not authorize');
     }
+
+    // remove the bearer from the token
+    const authorization = req.headers.authorization.replace('Bearer ', '');
+
+    // verify the jwt
+    jwt.verify(authorization, process.env.PUB_TOKEN_SECRET, (err) => {
+      if (err) {
+        throw new Error('Failed to authorize');
+      }
+    });
+    next();
   } catch (error) {
     res.status(500).json({ error: 'Not authenicated' });
   }

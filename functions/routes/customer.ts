@@ -22,4 +22,8 @@ customer.post(
   controller.verifyOTPSMSForPhone,
 );
 
+customer.get('/wallet', verifyFirebaseToken, controller.getAllPaymentMethod);
+
+customer.delete('/wallet', verifyFirebaseToken, controller.removePaymentMethod);
+
 export default customer;

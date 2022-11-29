@@ -6,7 +6,10 @@ import lodash from 'lodash';
 import Stripe from 'stripe';
 import isValidPhone from 'validator/lib/isMobilePhone.js';
 import { verifyAddress } from '../helper/address.js';
-import { createPaymentIntent } from '../helper/payment.js';
+import {
+  createPaymentIntent,
+  generatePublicPaymentMethods,
+} from '../helper/payment.js';
 
 const { firestore } = admin;
 const { isString } = lodash;
@@ -134,23 +137,7 @@ export const getCustomerData = async (req: Request, res: Response) => {
       type: 'card',
     });
 
-    const publicPaymentMethods: Payment.PublicPaymentMethod[] = [];
-
-    cards.data.map((card) => {
-      // if the card field exist
-      if (card.card) {
-        publicPaymentMethods.push({
-          id: card.id,
-          customer: card.customer?.toString() ?? '',
-          card: {
-            brand: card.card.brand,
-            expMonth: card.card.exp_month,
-            expYear: card.card.exp_year,
-            last4: card.card.last4,
-          },
-        });
-      }
-    });
+    const publicMethods = generatePublicPaymentMethods(cards.data);
 
     // if the intent is already used, create a new intent
     if (intent.status === 'succeeded') {
@@ -170,7 +157,7 @@ export const getCustomerData = async (req: Request, res: Response) => {
     res.status(200).json({
       user,
       clientSecret: intent.client_secret,
-      cards: publicPaymentMethods,
+      cards: publicMethods,
     });
   } catch (error) {
     res.status(500).json({
@@ -220,5 +207,54 @@ export const updateAddress = async (req: Request, res: Response) => {
     res
       .status(500)
       .json({ error: (error as Error).message ?? 'Failed to update address' });
+  }
+};
+
+export const getAllPaymentMethod = async (req: Request, res: Response) => {
+  try {
+    // get customer id from the database
+    const userRef = firestore().collection('/users_v2').doc(req.user.uid);
+    const user = (await userRef.get()).data() as User;
+
+    // list out all saved card payment methods
+    const cards = await stripe.paymentMethods.list({
+      customer: user.customer_id,
+      type: 'card',
+    });
+
+    const publicMethods = generatePublicPaymentMethods(cards.data);
+
+    res.status(200).json({ cards: publicMethods });
+  } catch (error) {
+    res.status(500).json({
+      error: (error as Error).message ?? 'Failed to get payment methods',
+    });
+  }
+};
+
+export const removePaymentMethod = async (req: Request, res: Response) => {
+  try {
+    const card = req.body.card as Payment.PublicPaymentMethod;
+
+    if (!card) {
+      throw new Error('Please provide card info');
+    }
+
+    await stripe.paymentMethods.detach(card.id);
+
+    const cards = await stripe.paymentMethods.list({
+      customer: card.customer,
+      type: 'card',
+    });
+
+    const paymentMethods = generatePublicPaymentMethods(cards.data);
+
+    res.status(200).json({
+      cards: paymentMethods,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: (error as Error).message ?? 'Failed to get payment methods',
+    });
   }
 };
