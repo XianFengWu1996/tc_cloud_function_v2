@@ -6,12 +6,13 @@ import lodash from 'lodash';
 import Stripe from 'stripe';
 import isValidPhone from 'validator/lib/isMobilePhone.js';
 import { verifyAddress } from '../helper/address.js';
+import { createNewUserData } from '../helper/auth.js';
 import {
   createPaymentIntent,
   generatePublicPaymentMethods,
 } from '../helper/payment.js';
 
-const { firestore } = admin;
+const { firestore, auth } = admin;
 const { isString } = lodash;
 
 const stripe = new Stripe(process.env.STRIPE_KEY, {
@@ -52,9 +53,33 @@ export const sendOTPSMSForPhone = async (req: Request, res: Response) => {
 
     console.log(code);
 
+    // code to send sms using telnyx, but since we no longer going live, use twillio test account instead
+    // let response = await axios.post('https://api.telnyx.com/v2/messages', {
+    //     "from": "+15732241462", // phone number from the api
+    //     "to": "+19175787352",  // phone number which you want to send to
+    //     "text": "Your verfication code for Taipei Cuisine is {the verification code}. Please do not share this code."
+    // },{
+    //     headers: {
+    //         "Content-Type": "application/json",
+    //         "Accept": "application/json",
+    //         "Authorization": `Bearer ${process.env.SMS_KEY}`
+    //     }
+    // })
+
+    // twillio
+    // set the sid and token in the environment variable
+    // install the package: npm i twilio
+    // let client = twilio(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
+
+    // client.messages.create({
+    //   body: `Your verfication code for Taipei Cuisine is ${code}. Please do not share this code.`,
+    //   from: "+13342928198",
+    //   to: `+1${phone_num}`,
+    // });
+
     await firestore().collection('sms').doc(token).set(smsToken);
 
-    res.status(200).json({ token });
+    res.status(200).json({ token, codeForTestingPurpose: code });
   } catch (error) {
     console.error(error);
     res.status(500).json({
@@ -125,13 +150,26 @@ export const getCustomerData = async (req: Request, res: Response) => {
     const userRef = firestore().collection('/users_v2').doc(req.user.uid);
     const user = (await userRef.get()).data();
 
+    let paymentIntent = '';
+    let customerId = '';
+
+    const firebaseUser = await auth().getUser(req.user.uid);
     if (!user) {
-      throw new Error('No user found');
+      const result = await createNewUserData(
+        req.user.email ?? firebaseUser.providerData[0].email,
+        req.user.uid,
+      );
+
+      paymentIntent = result.paymentIntent.id;
+      customerId = result.customer.id;
+    } else {
+      paymentIntent = user.paymentIntent;
+      customerId = user.customer_id;
     }
 
     // retrieve and check the intent
-    let intent = await stripe.paymentIntents.retrieve(user.paymentIntent);
-    const customer = await stripe.customers.retrieve(user.customer_id);
+    let intent = await stripe.paymentIntents.retrieve(paymentIntent);
+    const customer = await stripe.customers.retrieve(customerId);
     const cards = await stripe.paymentMethods.list({
       customer: customer.id,
       type: 'card',
@@ -142,7 +180,7 @@ export const getCustomerData = async (req: Request, res: Response) => {
     // if the intent is already used, create a new intent
     if (intent.status === 'succeeded') {
       // reassign a new intent
-      intent = await createPaymentIntent(user.customer_id);
+      intent = await createPaymentIntent(customerId);
 
       // update the new intent
       await userRef.update({
@@ -253,6 +291,37 @@ export const removePaymentMethod = async (req: Request, res: Response) => {
       cards: paymentMethods,
     });
   } catch (error) {
+    res.status(500).json({
+      error: (error as Error).message ?? 'Failed to get payment methods',
+    });
+  }
+};
+
+export const getOrderHistory = async (req: Request, res: Response) => {
+  try {
+    const orderRef = firestore().collection('order_v2');
+
+    const orderDoc = (
+      await orderRef
+        .where('uid', '==', req.user.uid)
+        .orderBy('createdAt', 'desc')
+        .get()
+    ).docs;
+
+    const orders: Checkout.ClientRes[] = [];
+    orderDoc.map((order) => {
+      const temp = order.data() as Checkout.Server;
+
+      delete temp.payment.stripe?.private;
+
+      orders.push(temp);
+    });
+
+    res.status(200).json({
+      orders,
+    });
+  } catch (error) {
+    console.log(error);
     res.status(500).json({
       error: (error as Error).message ?? 'Failed to get payment methods',
     });

@@ -113,3 +113,21 @@ interface Status {
   };
   serverOn: boolean;
 }
+
+declare namespace ContactUs {
+  // types for the Contact Us req.body
+  interface Request {
+    name: string;
+    email: string;
+    subject: string;
+    message: string;
+  }
+
+  interface Data extends Request {
+    id: string;
+    createdAt: number;
+    status: Status;
+  }
+
+  type Status = 'requested' | 'required_followup' | 'complete';
+}

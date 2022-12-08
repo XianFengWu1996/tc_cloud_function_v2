@@ -26,4 +26,6 @@ customer.get('/wallet', verifyFirebaseToken, controller.getAllPaymentMethod);
 
 customer.delete('/wallet', verifyFirebaseToken, controller.removePaymentMethod);
 
+customer.get('/order', verifyFirebaseToken, controller.getOrderHistory);
+
 export default customer;

@@ -1,6 +1,7 @@
 /* eslint-disable max-len */
 import { Request, Response } from 'express';
 import admin from 'firebase-admin';
+import { v4 } from 'uuid';
 
 const { firestore } = admin;
 
@@ -43,102 +44,88 @@ export const getStoreInfo = async (req: Request, res: Response) => {
   }
 };
 
-export const getDishes = async (req: Request, res: Response) => {
+export const contactUs = async (req: Request, res: Response) => {
   try {
-    // const choices: Choice[] = [];
+    const { name, email, subject, message } = req.body as ContactUs.Request;
+    const id = v4();
 
-    // choices.push({
-    //   id: v4(),
-    //   en_name: 'choose a flavor',
-    //   ch_name: '选择口味',
-    //   minimum: 1,
-    //   maxiumum: 1,
-    //   type: 'required',
-    //   options: [
-    //     {
-    //       id: v4(),
-    //       en_name: 'original',
-    //       ch_name: '原味',
-    //       price: 0,
-    //       is_spicy: false,
-    //     },
-    //     {
-    //       id: v4(),
-    //       en_name: 'salt and pepper',
-    //       ch_name: '椒盐',
-    //       price: 1,
-    //       is_spicy: true,
-    //     },
-    //     {
-    //       id: v4(),
-    //       en_name: 'long horn pepper',
-    //       ch_name: '小辣椒',
-    //       price: 2,
-    //       is_spicy: true,
-    //     },
-    //   ],
-    // });
-
-    // choices.push({
-    //   id: v4(),
-    //   en_name: 'choose additional protein',
-    //   ch_name: '选择额外肉类',
-    //   minimum: 0,
-    //   maxiumum: 5,
-    //   type: 'optional',
-    //   options: [
-    //     {
-    //       id: v4(),
-    //       en_name: 'chicken',
-    //       ch_name: '鸡肉',
-    //       price: 3,
-    //       is_spicy: false,
-    //     },
-    //     {
-    //       id: v4(),
-    //       en_name: 'fish',
-    //       ch_name: '鱼片',
-    //       price: 3,
-    //       is_spicy: false,
-    //     },
-    //     {
-    //       id: v4(),
-    //       en_name: 'beef',
-    //       ch_name: '牛肉',
-    //       price: 3,
-    //       is_spicy: false,
-    //     },
-    //     {
-    //       id: v4(),
-    //       en_name: 'Fried tofu',
-    //       ch_name: '炸豆腐',
-    //       price: 3,
-    //       is_spicy: false,
-    //     },
-    //     {
-    //       id: v4(),
-    //       en_name: 'fatty beef',
-    //       ch_name: '肥牛',
-    //       price: 6,
-    //       is_spicy: false,
-    //     },
-    //   ],
-    // });
-
-    // await firestore()
-    //   .collection('dishes')
-    //   .doc('c997e318-d171-4b12-87a9-7e16984c014b')
-    //   .update({
-    //     choices: choices,
-    //   });
-
-    // const dishDocs = (await firestore().collection('dishes').where('is_spicy', '==', true).get()).docs;
+    await firestore()
+      .collection('contactUs')
+      .doc(id)
+      .set({
+        id,
+        name,
+        email,
+        subject,
+        message,
+        createdAt: Date.now(),
+        status: 'requested',
+      } as ContactUs.Data);
 
     res.status(200).json();
   } catch (error) {
-    console.log(error);
-    res
-      .status(500)
-      .json({ error: (error as Error).message ?? 'Failed to get dishes' });
+    res.status(500).json({
+      error: (error as Error).message ?? 'Failed to get sent message',
+    });
+  }
+};
+
+export const getOrders = async (req: Request, res: Response) => {
+  try {
+    const snapshot = await firestore().collection('order_v2').get();
+    const orders: Checkout.Server[] = [];
+
+    snapshot.docs.map((data) => {
+      const order = data.data() as Checkout.Server;
+      orders.push(order);
+    });
+
+    res.status(200).json({ orders });
+  } catch (error) {
+    res.status(500).json({
+      error:
+        (error as Error).message ?? 'Failed to get order for simulate orders',
+    });
+  }
+};
+
+export const getContactUsMessage = async (req: Request, res: Response) => {
+  try {
+    const snapshot = await firestore().collection('contactUs').get();
+    const contactUs: ContactUs.Data[] = [];
+
+    snapshot.docs.map((data) => {
+      const message = data.data() as ContactUs.Data;
+      contactUs.push(message);
+    });
+
+    res.status(200).json({ contactUs });
+  } catch (error) {
+    res.status(500).json({
+      error:
+        (error as Error).message ?? 'Failed to get simulate contact us message',
+    });
+  }
+};
+
+export const updateContactUsMessageStatus = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const id: string = req.body.id;
+    const status: ContactUs.Status = req.body.status;
+
+    await firestore().collection('contactUs').doc(id).update({
+      status,
+    });
+
+    res.status(200).json();
+  } catch (error) {
+    res.status(500).json({
+      error:
+        (error as Error).message ??
+        'Failed to update simulate contact us message',
+    });
   }
 };

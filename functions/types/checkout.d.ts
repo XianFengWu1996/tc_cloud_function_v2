@@ -5,6 +5,7 @@ type UtensilOptionType = 'include' | 'do not include';
 type RewardType = 'reward' | 'redemption' | 'refund' | 'cancel';
 type StatusType =
   | 'in_progress'
+  | 'preparing'
   | 'complete'
   | 'partial_refund'
   | 'fully_refund'

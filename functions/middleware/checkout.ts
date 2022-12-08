@@ -1,11 +1,14 @@
 /* eslint-disable max-len */
 /* eslint-disable camelcase */
 import { NextFunction, Request, Response } from 'express';
+import admin from 'firebase-admin';
 import lodash from 'lodash';
 import validator from 'validator';
+import { currenTime, timeFormat } from '../helper/time.js';
 
 const { isString, isEmpty, isNumber } = lodash;
 const { isMobilePhone } = validator.default;
+const { firestore } = admin;
 
 export const verifyCheckoutClient = (
   req: Request,
@@ -192,5 +195,49 @@ export const verifyPaymentMethod = (
     res.status(500).json({
       error: (error as Error).message ?? 'Some error has occurred',
     });
+  }
+};
+
+export const verifyStoreOpenStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const snapshot = await firestore().collection('store').doc('hours').get();
+
+    const hoursData = snapshot.data() as Hours;
+
+    const foundHour = hoursData.regular_hour.find((hr) => {
+      return hr.dayOfWeek === currenTime().dayOfWeek;
+    });
+
+    if (!foundHour) {
+      throw new Error('No store hour is found');
+    }
+
+    const { isOpenForBusiness, hours } = foundHour;
+    const { operating } = hours;
+
+    if (!isOpenForBusiness) {
+      throw new Error('The store is not open for business today');
+    }
+
+    const time = currenTime().currentTime;
+
+    if (!(operating.open < time && operating.close > time)) {
+      throw new Error(
+        `The kitchen is close, the store hour is ${timeFormat(
+          operating.open,
+        )}-${timeFormat(operating.close)}`,
+      );
+    }
+
+    next();
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .json({ error: (error as Error).message ?? 'Failed to create order' });
   }
 };

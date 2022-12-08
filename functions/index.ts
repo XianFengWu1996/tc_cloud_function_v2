@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -8,22 +9,17 @@ import admin from 'firebase-admin';
 import { initializeApp } from 'firebase-admin/app';
 import { region } from 'firebase-functions';
 import helmet from 'helmet';
+import { createNewUserData } from './helper/auth.js';
 
-import Stripe from 'stripe';
-import { createPaymentIntent } from './helper/payment.js';
 import authRoute from './routes/auth.js';
 import checkoutRoute from './routes/checkout.js';
 import customerRoute from './routes/customer.js';
 import storeRoute from './routes/store.js';
 
 initializeApp();
-const { firestore, auth } = admin;
+const { firestore } = admin;
 
 dotenv.config();
-
-const stripe = new Stripe(process.env.STRIPE_KEY, {
-  apiVersion: '2022-08-01',
-});
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -64,51 +60,10 @@ export const createUser = region('us-east4')
   .auth.user()
   .onCreate(async (user) => {
     try {
-      const customer = await stripe.customers.create({
-        email: user.email ?? user.providerData[0].email,
-      });
-
-      const paymentIntent = await createPaymentIntent(customer.id);
-
-      await auth().updateUser(user.uid, {
-        email: user.email ?? user.providerData[0].email,
-      });
-
-      // when the user is created, insert some basic information
-      await firestore()
-        .collection('/users_v2') // normally call /users
-        .doc(user.uid)
-        .set({
-          address: {
-            formatted_address: {
-              complete: '',
-              street_name: '',
-              city_state_zip: '',
-            },
-            details: {
-              street_number: '',
-              street_name: '',
-              city: '',
-              state: '',
-              country: '',
-              postal_code: '',
-              lat: 0,
-              lng: 0,
-              place_id: '',
-              delivery_fee: 0,
-              estimate_time: '',
-              apartment_number: '',
-            },
-          },
-          customer_id: customer.id,
-          paymentIntent: paymentIntent.id,
-          name: '',
-          phone: '',
-          reward: {
-            points: 0,
-            transactions: [],
-          },
-        });
+      await createNewUserData(
+        user.email ?? user.providerData[0].email,
+        user.uid,
+      );
     } catch (err) {
       console.error(err);
     }

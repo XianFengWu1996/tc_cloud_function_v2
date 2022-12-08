@@ -6,6 +6,7 @@ import { verifyFirebaseToken } from '../middleware/auth.js';
 import {
   verifyCheckoutClient,
   verifyPaymentMethod,
+  verifyStoreOpenStatus,
 } from '../middleware/checkout.js';
 
 const checkout = express.Router();
@@ -18,6 +19,7 @@ checkout.post(
 
 checkout.post(
   '/payment/in_person',
+  verifyStoreOpenStatus,
   verifyCheckoutClient,
   verifyFirebaseToken,
   controller.placeInPersonOrder,
@@ -25,6 +27,7 @@ checkout.post(
 
 checkout.post(
   '/payment/saved_card',
+  verifyStoreOpenStatus,
   verifyCheckoutClient,
   verifyPaymentMethod,
   verifyFirebaseToken,
@@ -33,6 +36,7 @@ checkout.post(
 
 checkout.post(
   '/payment/new_card',
+  verifyStoreOpenStatus,
   verifyCheckoutClient,
   verifyFirebaseToken,
   controller.newCardPayment,
