@@ -42,7 +42,7 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: ['https://tc-demo-v1.vercel.app', 'http://localhost:3000'],
+    origin: process.env.ALLOW_ORIGINS.split(','),
     credentials: true,
   }),
 );
